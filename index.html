@@ -50,7 +50,7 @@
         .container {
             position: relative;
             z-index: 1;
-            max-width: 820px;
+            max-width: 860px;
             width: 100%;
             margin: 0 auto;
             padding: 10px 0 30px;
@@ -217,14 +217,12 @@
 
         .file-upload-wrapper {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
+            flex-direction: column;
+            gap: 10px;
             margin-top: 4px;
         }
 
         .file-upload-wrapper input[type="file"] {
-            flex: 1 1 200px;
             padding: 10px;
             border: 1.5px dashed rgba(233, 30, 99, 0.15);
             border-radius: 24px;
@@ -232,28 +230,47 @@
             font-family: 'Nunito', sans-serif;
             font-weight: 600;
             color: #880e4f;
+            cursor: pointer;
         }
 
-        .file-upload-wrapper .file-name {
-            font-weight: 700;
+        .file-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 4px 0;
+        }
+
+        .file-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 30px;
+            padding: 4px 12px 4px 16px;
+            border: 1px solid rgba(233, 30, 99, 0.08);
+            font-weight: 600;
+            font-size: 0.85rem;
             color: #880e4f;
-            opacity: 0.6;
-            font-size: 0.9rem;
         }
 
-        .file-upload-wrapper .remove-file-btn {
+        .file-item .remove-file-btn {
             background: none;
             border: none;
             color: #e91e63;
             font-weight: 700;
             cursor: pointer;
-            padding: 4px 10px;
+            padding: 2px 6px;
             border-radius: 30px;
+            font-size: 0.9rem;
             transition: background 0.2s;
         }
 
-        .file-upload-wrapper .remove-file-btn:hover {
-            background: rgba(233, 30, 99, 0.04);
+        .file-item .remove-file-btn:hover {
+            background: rgba(233, 30, 99, 0.08);
+        }
+
+        .file-item .file-type-icon {
+            color: #e91e63;
         }
 
         .btn-submit {
@@ -358,18 +375,32 @@
             word-break: break-word;
         }
 
-        .post-image {
+        /* === GALLERY ẢNH === */
+        .post-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 10px;
             margin: 12px 0 16px;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
         }
 
-        .post-image img {
+        .post-gallery .gallery-item {
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+            aspect-ratio: 1 / 1;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .post-gallery .gallery-item img {
             width: 100%;
-            max-height: 420px;
+            height: 100%;
             object-fit: cover;
             display: block;
+            transition: transform 0.3s ease;
+        }
+
+        .post-gallery .gallery-item img:hover {
+            transform: scale(1.03);
         }
 
         .post-audio {
@@ -671,8 +702,8 @@
                 font-size: 0.85rem;
                 padding: 4px 12px;
             }
-            .post-image img {
-                max-height: 240px;
+            .post-gallery {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
             }
         }
 
@@ -706,7 +737,7 @@
             </div>
         </header>
 
-        <!-- FORM ĐĂNG BÀI (có upload ảnh + nhạc) -->
+        <!-- FORM ĐĂNG BÀI (upload nhiều ảnh + nhạc) -->
         <div class="post-form" id="postForm">
             <div class="form-title"><i class="fas fa-feather-alt"></i> Viết bài cập nhật</div>
             <form id="newPostForm">
@@ -719,23 +750,21 @@
                     <textarea id="postContent" placeholder="Mô tả chi tiết bản cập nhật..." rows="4" required></textarea>
                 </div>
 
-                <!-- Upload ảnh -->
+                <!-- Upload nhiều ảnh -->
                 <div class="form-group">
-                    <label>🖼️ Tải ảnh lên (tùy chọn, tối đa 2MB)</label>
+                    <label>🖼️ Tải ảnh lên (tối đa 5 ảnh, mỗi ảnh ≤ 1.5MB)</label>
                     <div class="file-upload-wrapper">
-                        <input type="file" id="imageFileInput" accept="image/*" />
-                        <span class="file-name" id="imageFileNameDisplay">Chưa có ảnh</span>
-                        <button type="button" class="remove-file-btn" id="removeImageBtn">✕ Xóa</button>
+                        <input type="file" id="imageFileInput" accept="image/*" multiple />
+                        <div class="file-list" id="imageFileList"></div>
                     </div>
                 </div>
 
                 <!-- Upload nhạc -->
                 <div class="form-group">
-                    <label>🎵 Tải file nhạc lên (tùy chọn, tối đa 2MB)</label>
+                    <label>🎵 Tải file nhạc lên (tùy chọn, ≤ 2MB)</label>
                     <div class="file-upload-wrapper">
                         <input type="file" id="audioFileInput" accept="audio/*" />
-                        <span class="file-name" id="audioFileNameDisplay">Chưa có nhạc</span>
-                        <button type="button" class="remove-file-btn" id="removeAudioBtn">✕ Xóa</button>
+                        <div class="file-list" id="audioFileList"></div>
                     </div>
                 </div>
 
@@ -756,9 +785,8 @@
         const STORAGE_KEY = 'music_blog_posts';
         let posts = [];
 
-        // Biến tạm lưu file ảnh và nhạc đã chọn
-        let selectedImageData = null;
-        let selectedImageName = '';
+        // Lưu file ảnh và nhạc đã chọn (dạng mảng base64 + tên)
+        let selectedImages = []; // [{data, name}, ...]
         let selectedAudioData = null;
         let selectedAudioName = '';
 
@@ -774,7 +802,6 @@
                 }
             } catch (_) {}
 
-            // Mẫu dữ liệu ban đầu
             posts = [{
                 id: Date.now() - 86400000 * 3,
                 title: '🎧 Giao diện mới',
@@ -784,8 +811,7 @@
                 comments: [
                     { author: 'Minh Anh', text: 'Rất đẹp và thanh lịch!', time: Date.now() - 3600000 * 3 }
                 ],
-                imageData: null,
-                imageName: null,
+                images: [], // mảng {data, name}
                 audioData: null,
                 audioName: null
             }, {
@@ -797,8 +823,7 @@
                 comments: [
                     { author: 'Thu Thảo', text: 'Tuyệt vời! Mình rất thích.', time: Date.now() - 3600000 * 2 }
                 ],
-                imageData: null,
-                imageName: null,
+                images: [],
                 audioData: null,
                 audioName: null
             }];
@@ -860,17 +885,21 @@
                 const likeCount = post.likes || 0;
                 const commentCount = Array.isArray(post.comments) ? post.comments.length : 0;
 
-                // Ảnh
-                let imageHtml = '';
-                if (post.imageData) {
-                    imageHtml = `
-                        <div class="post-image">
-                            <img src="${post.imageData}" alt="${escapeHtml(post.imageName || 'Ảnh')}" loading="lazy" />
-                        </div>
-                    `;
+                // Gallery ảnh
+                let galleryHtml = '';
+                if (Array.isArray(post.images) && post.images.length > 0) {
+                    galleryHtml = `<div class="post-gallery">`;
+                    for (const img of post.images) {
+                        galleryHtml += `
+                            <div class="gallery-item">
+                                <img src="${img.data}" alt="${escapeHtml(img.name || 'Ảnh')}" loading="lazy" />
+                            </div>
+                        `;
+                    }
+                    galleryHtml += `</div>`;
                 }
 
-                // Nhạc
+                // Audio
                 let audioHtml = '';
                 if (post.audioData) {
                     audioHtml = `
@@ -891,7 +920,7 @@
                             </div>
                         </div>
                         <div class="post-content">${escapeHtml(post.content) || '📝 Không có nội dung.'}</div>
-                        ${imageHtml}
+                        ${galleryHtml}
                         ${audioHtml}
                         <div class="post-actions">
                             <div class="like-btn" data-id="${post.id}">
@@ -904,7 +933,6 @@
                             </div>
                         </div>
 
-                        <!-- Comment section -->
                         <div class="comment-section" data-id="${post.id}">
                             <div class="comment-list" id="commentList-${post.id}">
                                 ${renderComments(post)}
@@ -1037,7 +1065,7 @@
             showToast('🗑️ Đã xóa bài.');
         }
 
-        function addPost(title, content, imageData, imageName, audioData, audioName) {
+        function addPost(title, content, images, audioData, audioName) {
             const newPost = {
                 id: generateId(),
                 title: title.trim(),
@@ -1045,8 +1073,7 @@
                 date: getDateString(0),
                 likes: 0,
                 comments: [],
-                imageData: imageData || null,
-                imageName: imageName || null,
+                images: images || [],
                 audioData: audioData || null,
                 audioName: audioName || null
             };
@@ -1057,51 +1084,77 @@
         }
 
         // ============================================================
-        //  FILE UPLOAD HANDLING (Ảnh + Nhạc)
+        //  FILE UPLOAD (nhiều ảnh + nhạc)
         // ============================================================
 
-        // --- ẢNH ---
+        // --- ẢNH (multiple) ---
         const imageInput = document.getElementById('imageFileInput');
-        const imageNameDisplay = document.getElementById('imageFileNameDisplay');
-        const removeImageBtn = document.getElementById('removeImageBtn');
+        const imageFileList = document.getElementById('imageFileList');
 
         imageInput.addEventListener('change', function(e) {
-            const file = this.files[0];
-            if (!file) {
-                resetImageSelection();
-                return;
-            }
-            if (file.size > 2 * 1024 * 1024) {
-                showToast('⚠️ Ảnh quá lớn! Vui lòng chọn file dưới 2MB.');
+            const files = Array.from(this.files);
+            if (selectedImages.length + files.length > 5) {
+                showToast('⚠️ Chỉ được tối đa 5 ảnh!');
                 this.value = '';
-                resetImageSelection();
                 return;
             }
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                selectedImageData = event.target.result;
-                selectedImageName = file.name;
-                imageNameDisplay.textContent = file.name;
-                showToast('✅ Đã chọn ảnh: ' + file.name);
-            };
-            reader.readAsDataURL(file);
+
+            let loaded = 0;
+            for (const file of files) {
+                if (file.size > 1.5 * 1024 * 1024) {
+                    showToast(`⚠️ Ảnh "${file.name}" quá lớn (>1.5MB)`);
+                    continue;
+                }
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    selectedImages.push({
+                        data: event.target.result,
+                        name: file.name
+                    });
+                    loaded++;
+                    if (loaded === files.length) {
+                        renderImageFileList();
+                        imageInput.value = '';
+                        showToast(`✅ Đã chọn ${selectedImages.length} ảnh`);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+            // Nếu không có file nào hợp lệ, reset input
+            if (files.length === 0) {
+                this.value = '';
+            }
         });
 
-        removeImageBtn.addEventListener('click', function() {
-            imageInput.value = '';
-            resetImageSelection();
-        });
-
-        function resetImageSelection() {
-            selectedImageData = null;
-            selectedImageName = '';
-            imageNameDisplay.textContent = 'Chưa có ảnh';
+        function renderImageFileList() {
+            imageFileList.innerHTML = '';
+            for (let i = 0; i < selectedImages.length; i++) {
+                const img = selectedImages[i];
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.innerHTML = `
+                    <span class="file-type-icon"><i class="fas fa-image"></i></span>
+                    ${escapeHtml(img.name)}
+                    <button class="remove-file-btn" data-index="${i}" title="Xóa ảnh này">✕</button>
+                `;
+                imageFileList.appendChild(div);
+            }
+            // Gắn sự kiện xóa cho từng ảnh
+            document.querySelectorAll('#imageFileList .remove-file-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const index = parseInt(this.dataset.index);
+                    selectedImages.splice(index, 1);
+                    renderImageFileList();
+                    if (selectedImages.length === 0) {
+                        imageInput.value = '';
+                    }
+                });
+            });
         }
 
         // --- NHẠC ---
         const audioInput = document.getElementById('audioFileInput');
-        const audioNameDisplay = document.getElementById('audioFileNameDisplay');
-        const removeAudioBtn = document.getElementById('removeAudioBtn');
+        const audioFileList = document.getElementById('audioFileList');
 
         audioInput.addEventListener('change', function(e) {
             const file = this.files[0];
@@ -1119,21 +1172,34 @@
             reader.onload = function(event) {
                 selectedAudioData = event.target.result;
                 selectedAudioName = file.name;
-                audioNameDisplay.textContent = file.name;
+                renderAudioFileList();
                 showToast('✅ Đã chọn nhạc: ' + file.name);
             };
             reader.readAsDataURL(file);
         });
 
-        removeAudioBtn.addEventListener('click', function() {
-            audioInput.value = '';
-            resetAudioSelection();
-        });
+        function renderAudioFileList() {
+            audioFileList.innerHTML = '';
+            if (selectedAudioData) {
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.innerHTML = `
+                    <span class="file-type-icon"><i class="fas fa-music"></i></span>
+                    ${escapeHtml(selectedAudioName)}
+                    <button class="remove-file-btn" id="removeAudioBtn">✕</button>
+                `;
+                audioFileList.appendChild(div);
+                document.getElementById('removeAudioBtn').addEventListener('click', function() {
+                    resetAudioSelection();
+                    audioInput.value = '';
+                });
+            }
+        }
 
         function resetAudioSelection() {
             selectedAudioData = null;
             selectedAudioName = '';
-            audioNameDisplay.textContent = 'Chưa có nhạc';
+            audioFileList.innerHTML = '';
         }
 
         // ============================================================
@@ -1152,10 +1218,12 @@
 
         cancelBtn.addEventListener('click', function() {
             form.classList.remove('open');
-            resetImageSelection();
+            // Reset file selections
+            selectedImages = [];
+            renderImageFileList();
             resetAudioSelection();
-            imageInput.value = '';
             audioInput.value = '';
+            imageInput.value = '';
         });
 
         document.getElementById('newPostForm').addEventListener('submit', function(e) {
@@ -1175,18 +1243,18 @@
             addPost(
                 title,
                 content,
-                selectedImageData,
-                selectedImageName,
+                [...selectedImages], // copy mảng
                 selectedAudioData,
                 selectedAudioName
             );
 
             // Reset form
             this.reset();
-            resetImageSelection();
+            selectedImages = [];
+            renderImageFileList();
             resetAudioSelection();
-            imageInput.value = '';
             audioInput.value = '';
+            imageInput.value = '';
             form.classList.remove('open');
         });
 
@@ -1237,7 +1305,7 @@
             }, 400);
         }
 
-        console.log('🎵 Music Blog – đã hỗ trợ upload ảnh và nhạc!');
+        console.log('🎵 Music Blog – upload nhiều ảnh + nhạc!');
     </script>
 
 </body>
