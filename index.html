@@ -7,7 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <style>
-        /* ===== RESET ===== */
         * {
             margin: 0;
             padding: 0;
@@ -221,6 +220,7 @@
             align-items: center;
             gap: 12px;
             flex-wrap: wrap;
+            margin-top: 4px;
         }
 
         .file-upload-wrapper input[type="file"] {
@@ -356,6 +356,20 @@
             margin: 12px 0 16px;
             white-space: pre-line;
             word-break: break-word;
+        }
+
+        .post-image {
+            margin: 12px 0 16px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        }
+
+        .post-image img {
+            width: 100%;
+            max-height: 420px;
+            object-fit: cover;
+            display: block;
         }
 
         .post-audio {
@@ -657,6 +671,9 @@
                 font-size: 0.85rem;
                 padding: 4px 12px;
             }
+            .post-image img {
+                max-height: 240px;
+            }
         }
 
         ::-webkit-scrollbar {
@@ -689,7 +706,7 @@
             </div>
         </header>
 
-        <!-- FORM ĐĂNG BÀI (có upload nhạc) -->
+        <!-- FORM ĐĂNG BÀI (có upload ảnh + nhạc) -->
         <div class="post-form" id="postForm">
             <div class="form-title"><i class="fas fa-feather-alt"></i> Viết bài cập nhật</div>
             <form id="newPostForm">
@@ -701,14 +718,27 @@
                     <label for="postContent">📝 Nội dung</label>
                     <textarea id="postContent" placeholder="Mô tả chi tiết bản cập nhật..." rows="4" required></textarea>
                 </div>
+
+                <!-- Upload ảnh -->
+                <div class="form-group">
+                    <label>🖼️ Tải ảnh lên (tùy chọn, tối đa 2MB)</label>
+                    <div class="file-upload-wrapper">
+                        <input type="file" id="imageFileInput" accept="image/*" />
+                        <span class="file-name" id="imageFileNameDisplay">Chưa có ảnh</span>
+                        <button type="button" class="remove-file-btn" id="removeImageBtn">✕ Xóa</button>
+                    </div>
+                </div>
+
+                <!-- Upload nhạc -->
                 <div class="form-group">
                     <label>🎵 Tải file nhạc lên (tùy chọn, tối đa 2MB)</label>
                     <div class="file-upload-wrapper">
                         <input type="file" id="audioFileInput" accept="audio/*" />
-                        <span class="file-name" id="fileNameDisplay">Chưa có file</span>
-                        <button type="button" class="remove-file-btn" id="removeFileBtn">✕ Xóa</button>
+                        <span class="file-name" id="audioFileNameDisplay">Chưa có nhạc</span>
+                        <button type="button" class="remove-file-btn" id="removeAudioBtn">✕ Xóa</button>
                     </div>
                 </div>
+
                 <button type="submit" class="btn-submit"><i class="fas fa-paper-plane"></i> Đăng ngay</button>
                 <button type="button" class="cancel-form-btn" id="cancelFormBtn">Hủy</button>
             </form>
@@ -726,7 +756,9 @@
         const STORAGE_KEY = 'music_blog_posts';
         let posts = [];
 
-        // Biến tạm lưu file audio đã chọn (base64 và tên)
+        // Biến tạm lưu file ảnh và nhạc đã chọn
+        let selectedImageData = null;
+        let selectedImageName = '';
         let selectedAudioData = null;
         let selectedAudioName = '';
 
@@ -742,7 +774,7 @@
                 }
             } catch (_) {}
 
-            // Mẫu dữ liệu ban đầu (không có nhạc)
+            // Mẫu dữ liệu ban đầu
             posts = [{
                 id: Date.now() - 86400000 * 3,
                 title: '🎧 Giao diện mới',
@@ -752,6 +784,8 @@
                 comments: [
                     { author: 'Minh Anh', text: 'Rất đẹp và thanh lịch!', time: Date.now() - 3600000 * 3 }
                 ],
+                imageData: null,
+                imageName: null,
                 audioData: null,
                 audioName: null
             }, {
@@ -763,6 +797,8 @@
                 comments: [
                     { author: 'Thu Thảo', text: 'Tuyệt vời! Mình rất thích.', time: Date.now() - 3600000 * 2 }
                 ],
+                imageData: null,
+                imageName: null,
                 audioData: null,
                 audioName: null
             }];
@@ -824,7 +860,17 @@
                 const likeCount = post.likes || 0;
                 const commentCount = Array.isArray(post.comments) ? post.comments.length : 0;
 
-                // Audio block
+                // Ảnh
+                let imageHtml = '';
+                if (post.imageData) {
+                    imageHtml = `
+                        <div class="post-image">
+                            <img src="${post.imageData}" alt="${escapeHtml(post.imageName || 'Ảnh')}" loading="lazy" />
+                        </div>
+                    `;
+                }
+
+                // Nhạc
                 let audioHtml = '';
                 if (post.audioData) {
                     audioHtml = `
@@ -845,6 +891,7 @@
                             </div>
                         </div>
                         <div class="post-content">${escapeHtml(post.content) || '📝 Không có nội dung.'}</div>
+                        ${imageHtml}
                         ${audioHtml}
                         <div class="post-actions">
                             <div class="like-btn" data-id="${post.id}">
@@ -990,7 +1037,7 @@
             showToast('🗑️ Đã xóa bài.');
         }
 
-        function addPost(title, content, audioData, audioName) {
+        function addPost(title, content, imageData, imageName, audioData, audioName) {
             const newPost = {
                 id: generateId(),
                 title: title.trim(),
@@ -998,6 +1045,8 @@
                 date: getDateString(0),
                 likes: 0,
                 comments: [],
+                imageData: imageData || null,
+                imageName: imageName || null,
                 audioData: audioData || null,
                 audioName: audioName || null
             };
@@ -1008,45 +1057,83 @@
         }
 
         // ============================================================
-        //  FILE UPLOAD HANDLING
+        //  FILE UPLOAD HANDLING (Ảnh + Nhạc)
         // ============================================================
-        const fileInput = document.getElementById('audioFileInput');
-        const fileNameDisplay = document.getElementById('fileNameDisplay');
-        const removeFileBtn = document.getElementById('removeFileBtn');
 
-        fileInput.addEventListener('change', function(e) {
+        // --- ẢNH ---
+        const imageInput = document.getElementById('imageFileInput');
+        const imageNameDisplay = document.getElementById('imageFileNameDisplay');
+        const removeImageBtn = document.getElementById('removeImageBtn');
+
+        imageInput.addEventListener('change', function(e) {
             const file = this.files[0];
             if (!file) {
-                resetFileSelection();
+                resetImageSelection();
                 return;
             }
-            // Kiểm tra dung lượng (tối đa 2MB)
             if (file.size > 2 * 1024 * 1024) {
-                showToast('⚠️ File quá lớn! Vui lòng chọn file dưới 2MB.');
+                showToast('⚠️ Ảnh quá lớn! Vui lòng chọn file dưới 2MB.');
                 this.value = '';
-                resetFileSelection();
+                resetImageSelection();
                 return;
             }
-            // Đọc file thành base64
             const reader = new FileReader();
             reader.onload = function(event) {
-                selectedAudioData = event.target.result;
-                selectedAudioName = file.name;
-                fileNameDisplay.textContent = file.name;
-                showToast('✅ Đã chọn file: ' + file.name);
+                selectedImageData = event.target.result;
+                selectedImageName = file.name;
+                imageNameDisplay.textContent = file.name;
+                showToast('✅ Đã chọn ảnh: ' + file.name);
             };
             reader.readAsDataURL(file);
         });
 
-        removeFileBtn.addEventListener('click', function() {
-            fileInput.value = '';
-            resetFileSelection();
+        removeImageBtn.addEventListener('click', function() {
+            imageInput.value = '';
+            resetImageSelection();
         });
 
-        function resetFileSelection() {
+        function resetImageSelection() {
+            selectedImageData = null;
+            selectedImageName = '';
+            imageNameDisplay.textContent = 'Chưa có ảnh';
+        }
+
+        // --- NHẠC ---
+        const audioInput = document.getElementById('audioFileInput');
+        const audioNameDisplay = document.getElementById('audioFileNameDisplay');
+        const removeAudioBtn = document.getElementById('removeAudioBtn');
+
+        audioInput.addEventListener('change', function(e) {
+            const file = this.files[0];
+            if (!file) {
+                resetAudioSelection();
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                showToast('⚠️ File nhạc quá lớn! Vui lòng chọn file dưới 2MB.');
+                this.value = '';
+                resetAudioSelection();
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                selectedAudioData = event.target.result;
+                selectedAudioName = file.name;
+                audioNameDisplay.textContent = file.name;
+                showToast('✅ Đã chọn nhạc: ' + file.name);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        removeAudioBtn.addEventListener('click', function() {
+            audioInput.value = '';
+            resetAudioSelection();
+        });
+
+        function resetAudioSelection() {
             selectedAudioData = null;
             selectedAudioName = '';
-            fileNameDisplay.textContent = 'Chưa có file';
+            audioNameDisplay.textContent = 'Chưa có nhạc';
         }
 
         // ============================================================
@@ -1065,8 +1152,10 @@
 
         cancelBtn.addEventListener('click', function() {
             form.classList.remove('open');
-            resetFileSelection();
-            fileInput.value = '';
+            resetImageSelection();
+            resetAudioSelection();
+            imageInput.value = '';
+            audioInput.value = '';
         });
 
         document.getElementById('newPostForm').addEventListener('submit', function(e) {
@@ -1083,16 +1172,21 @@
                 return;
             }
 
-            // Lưu audio đã chọn (nếu có)
-            const audioData = selectedAudioData;
-            const audioName = selectedAudioName;
-
-            addPost(title, content, audioData, audioName);
+            addPost(
+                title,
+                content,
+                selectedImageData,
+                selectedImageName,
+                selectedAudioData,
+                selectedAudioName
+            );
 
             // Reset form
             this.reset();
-            resetFileSelection();
-            fileInput.value = '';
+            resetImageSelection();
+            resetAudioSelection();
+            imageInput.value = '';
+            audioInput.value = '';
             form.classList.remove('open');
         });
 
@@ -1143,7 +1237,7 @@
             }, 400);
         }
 
-        console.log('🎵 Music Blog – đã hỗ trợ upload nhạc!');
+        console.log('🎵 Music Blog – đã hỗ trợ upload ảnh và nhạc!');
     </script>
 
 </body>
